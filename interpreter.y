@@ -6,10 +6,40 @@
 char lexema[64];
 void yyerror(char *);
 
+typedef struct {
+   char name[60];
+   double value;
+   int token;
+}typeS;
+
+typeS SymTable[100];
+int nSym = 0;
+
+typedef struct {
+   int op;
+   int a1;
+   int a2;
+   int a3;
+}typeCod;
+
+int cx = -1;
+typeCod codeTable[100];
+
+void genCode( int, int, int ,int );
+int locateSymbol( char*, int );
+void printSymTable();
+void printCodeTable();
+
+int nVarTemp = 0;
+int genVarTemp();
+
+void interpretedCode();
+
 %}
 
-%token ID INT FLOAT
+%token ID INT FLOAT NUM
 %token DEF PRINT ERROR IF ELSE WHILE FOR IN ITE LAMBDA NIL
+%token ASSIGN DECLARE FUNCTION
 
 %%
 
@@ -21,7 +51,7 @@ statements      :   statement statements
                 ;
 
 statement       :   expression                                                          {printf("Expression\n");}
-                |   ID ':''=' expression                                                {printf("Variable Assignment\n");}
+                |   ID {$$ = locateSymbol( lexema, ID );}':''=' expression {genCode( ASSIGN, $2, $5, '-');}
                 |   DEF ID '=' expression                                               {printf("Var. Declaration\n");}
                 |   DEF ID '(' parameters ')' '{' statements '}'                        {printf("Function Definition\n");}
                 |   PRINT expression                                                    {printf("Print expression to console\n");}
@@ -36,34 +66,34 @@ parameters      :   expression ',' parameters
                 | ;
 
 expression      :   expr4
-                |   NIL
+                |   NIL {$$ = locateSymbol(lexema, NIL);}
                 |   LAMBDA '(' parameters ')' '{' statements '}'
                 |   ITE '(' expr4 ',' expr4 ',' expr4 ')'
                 ;
 
 expr4           :   expr3
-                |   expr4 '+' expr3
-                |   expr4 '-' expr3
+                |   expr4 '+' expr3 {int i = genVarTemp();}
+                |   expr4 '-' expr3 {int i = genVarTemp();}
                 ;
 
 expr3           :   expr2
-                |   expr3 '*' expr2
-                |   expr3 '/' expr2
+                |   expr3 '*' expr2 {int i = genVarTemp();}
+                |   expr3 '/' expr2 {int i = genVarTemp();}
                 ;
 
 expr2           :   expr1
-                |   expr2 '=''=' expr1
-                |   expr2 '!''=' expr1
-                |   expr2 '<''=' expr1
-                |   expr2 '>''=' expr1
-                |   expr2 '<' expr1
-                |   expr2 '>' expr1
+                |   expr2 '=''=' expr1 {int i = genVarTemp();}
+                |   expr2 '!''=' expr1 {int i = genVarTemp();}
+                |   expr2 '<''=' expr1 {int i = genVarTemp();}
+                |   expr2 '>''=' expr1 {int i = genVarTemp();}
+                |   expr2 '<' expr1 {int i = genVarTemp();}
+                |   expr2 '>' expr1 {int i = genVarTemp();}
                 ;
 
-expr1           :   num
-                |   ID              {printf("ID\n");}
-                |   '(' expr4 ')'
-                |   '?' ID '(' parameters ')'
+expr1           :   num {$$ = locateSymbol(lexema, NUM);}
+                |   ID  {$$ = locateSymbol(lexema, ID);}
+                |   '(' expr4 ')' {int i = genVarTemp();}
+                |   '?' ID '(' parameters ')' {int i = genVarTemp();}
                 ;
 
 num             :   INT
@@ -71,6 +101,61 @@ num             :   INT
                 ;
 
 %%
+
+int genVarTemp()
+{
+   char tmp[60];
+   sprintf( tmp, "T%d", nVarTemp++ );
+   return locateSymbol( tmp, ID);
+}
+
+void genCode( int op, int a1, int a2, int a3 )
+{
+   cx++;
+   codeTable[cx].op = op;
+   codeTable[cx].a1 = a1;
+   codeTable[cx].a2 = a2;
+   codeTable[cx].a3 = a3;
+}
+
+int locateSymbol(char *name, int token)
+{
+   int i;
+   for( i = 0; i < nSym; i++ )
+      if( !strcasecmp( SymTable[i].name, name ) )
+         return i;
+   
+   strcpy( SymTable[nSym].name, name );
+   SymTable[nSym].token = token;
+   if( token == ID )
+      SymTable[nSym].value = 0.0;
+   if( token == NUM )
+      sscanf( name, "%lf", &SymTable[nSym].value );
+   nSym++;
+   
+   return nSym - 1;
+}
+
+void printSymTable()
+{
+   int i;
+   printf("ID\tName\t Valor\t\t\tToken\n");
+   for( i = 0; i< nSym; i++ )
+      printf("%d\t%s\t%.6lf\t\t%d\n", i, SymTable[i].name, SymTable[i].value, SymTable[i].token);
+}
+
+void printCodeTable()
+{
+   int i, op, a1, a2, a3;
+   printf("ID\tcod\ta1\ta2\ta3\n");
+   for( i = 0; i <= cx; i++ ){
+      op = codeTable[i].op;
+      a1 = codeTable[i].a1;
+      a2 = codeTable[i].a2;
+      a3 = codeTable[i].a3;
+      printf("%d\t%d\t%d\t%d\t%d\n", i, op, a1, a2, a3);
+   }
+}
 
 void yyerror(char *mgs)
 {
@@ -161,4 +246,10 @@ void main()
         printf("Sintaxis de lenguaje valida\n");
     else
         printf("Sintaxis de lenguaje invalida\n");
+      
+   puts("TABLA DE SIMBOLOS");
+   printSymTable();
+   puts("");
+   puts("TABLA DE CODIGOS");
+   printCodeTable();
 }
