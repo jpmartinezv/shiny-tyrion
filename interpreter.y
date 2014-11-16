@@ -9,10 +9,29 @@ void yyerror(char *);
 %}
 
 %token ID INT FLOAT
+%token DEF PRINT ERROR IF ELSE WHILE FOR IN
 
 %%
 
-instr: ID '=' expr4 | expr4;
+program : statements ;
+statements:     statement statements 
+          |     statement 
+          | ;
+
+statement:  expression
+         |  ID '=' expression
+         |  DEF ID '=' expression
+         |  DEF ID '(' parameters ')' '{' statements '}'
+         |  PRINT expression
+         |  ERROR expression
+         |  IF '(' cond ')' '{' statements '}' ELSE '{' statements '}'
+         |  WHILE '(' cond ')' '{' statements '}'
+         |  FOR '(' ID IN expression ')' '{' statements '}';
+
+parameters: ;
+cond: ;
+
+expression : expr4;
 
 expr4: 
      expr3 | 
@@ -73,7 +92,6 @@ int yylex(){
             if(!isalpha(c))
             {
                 if(c == '.'){
-                    lexema[i++] = c;
                     do{
                         lexema[i++] = c;
                         c = getchar();
@@ -87,7 +105,7 @@ int yylex(){
                 }
                 else{
                     ungetc(c, stdin);
-                    lexema[i] == 0;
+                    lexema[i] = 0;
                     return INT;
                     
                 }
