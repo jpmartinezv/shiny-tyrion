@@ -1,0 +1,37 @@
+El lenguaje (shiny-tyrion)
+
+Gramatica:
+
+P     ::=     S*                             /* List of statements */
+
+S     ::=     E                              /* Expression */
+        |     Id = E                         /* Variable Assignment */
+        |     def Id = E                     /* Var. Declaration */
+        |     def Id ( Id* ) { S* }          /* Function Definition */
+        |     print E                        /* Print E to console */
+        |     error E                        /* Print E and exit */
+        |     if ( E ) { S* } else { S* }    /* If-else statement */
+        |     while ( E ) { S* }             /* While loop */
+        |     for ( Id in E ) { S* }         /* For loop */
+
+E     ::=     null                           /* The null value */
+        |     Num                            /* A number literal */
+        |     String                         /* A string literal */
+        |     Id                             /* A variable */      
+        |     E + E                          /* Addition */
+        |     E - E                          /* Subtraction */
+        |     E * E                          /* Multiplication */
+        |     E / E                          /* Integer Division */
+        |     E == E                         /* Equality Test */
+        |     E != E                         /* Inequality Test */
+        |     E <= E                         /* LessThan Test */
+        |     E >= E                         /* GreaterThan Test */
+        |     E < E                          /* Less Test */
+        |     E > E                          /* Greater Test */
+        |     lambda ( Id* ) { S* }          /* Anonymous function */
+        |     E ( E* )                       /* Function call */
+        |     ite(E, E, E)                   /* Ite Conditional */
+
+Num   ::=     /-?[0-9]+/                                        /* A Number */
+Id    ::=     /[a-zA-Z_][a-zA-Z_0-9]*/       /* An Identifier */ 
+String ::=     /"[^"]*"|'[^']*'/             /* A String */ 
