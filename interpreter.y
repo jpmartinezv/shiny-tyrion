@@ -3,107 +3,148 @@
 #include <string.h>
 #include <stdlib.h>
 
-char lexema[254];
+char lexema[64];
 void yyerror(char *);
 
 %}
 
 %token ID INT FLOAT
-%token DEF PRINT ERROR IF ELSE WHILE FOR IN
+%token DEF PRINT ERROR IF ELSE WHILE FOR IN ITE LAMBDA NIL
 
 %%
 
-program : statements ;
-statements:     statement statements 
-          |     statement 
-          | ;
+program         :   statements  
+                | ;
 
-statement:  expression
-         |  ID '=' expression
-         |  DEF ID '=' expression
-         |  DEF ID '(' parameters ')' '{' statements '}'
-         |  PRINT expression
-         |  ERROR expression
-         |  IF '(' cond ')' '{' statements '}' ELSE '{' statements '}'
-         |  WHILE '(' cond ')' '{' statements '}'
-         |  FOR '(' ID IN expression ')' '{' statements '}';
+statements      :   statement statements
+                |   statement
+                ;
 
-parameters: ;
-cond: ;
+statement       :   expression                                                          {printf("Expression\n");}
+                |   ID ':''=' expression                                                {printf("Variable Assignment\n");}
+                |   DEF ID '=' expression                                               {printf("Var. Declaration\n");}
+                |   DEF ID '(' parameters ')' '{' statements '}'                        {printf("Function Definition\n");}
+                |   PRINT expression                                                    {printf("Print expression to console\n");}
+                |   ERROR expression                                                    {printf("Print expression and exit\n");}
+                |   IF '(' expression ')' '{' statements '}' ELSE '{' statements '}'    {printf("If-else statement\n");}
+                |   WHILE '(' expression ')' '{' statements '}'                         {printf("While loop\n");}
+                |   FOR '(' ID IN expr4')' '{' statements '}'                           {printf("For loop\n");}
+                ;
 
-expression : expr4;
+parameters      :   expression ',' parameters
+                |   expression
+                | ;
 
-expr4: 
-     expr3 | 
-     expr4 '+' expr3 |
-     expr4 '-' expr3;
+expression      :   expr4
+                |   NIL
+                |   LAMBDA '(' parameters ')' '{' statements '}'
+                |   ITE '(' expr4 ',' expr4 ',' expr4 ')'
+                ;
 
-expr3: 
-     expr2 |
-     expr3 '*' expr2 |
-     expr3 '/' expr2;
+expr4           :   expr3
+                |   expr4 '+' expr3
+                |   expr4 '-' expr3
+                ;
 
-expr2:
-     expr1 |
-     expr2 '^' expr1 |
-     expr2 '%' expr1;
+expr3           :   expr2
+                |   expr3 '*' expr2
+                |   expr3 '/' expr2
+                ;
 
-expr1:
-     num | 
-     ID |
-     '(' expr4 ')';
+expr2           :   expr1
+                |   expr2 '=''=' expr1
+                |   expr2 '!''=' expr1
+                |   expr2 '<''=' expr1
+                |   expr2 '>''=' expr1
+                |   expr2 '<' expr1
+                |   expr2 '>' expr1
+                ;
 
-num:
-   INT| FLOAT;
+expr1           :   num
+                |   ID              {printf("ID\n");}
+                |   '(' expr4 ')'
+                |   '?' ID '(' parameters ')'
+                ;
+
+num             :   INT
+                |   FLOAT
+                ;
 
 %%
 
-void yyerror(char *mgs){
+void yyerror(char *mgs)
+{
     printf("error: %s",mgs);
 }
 
-int yylex(){ 
+int reservedWord(char lexema[])
+{
+   if(strcasecmp(lexema, "def") == 0) return DEF;
+   if(strcasecmp(lexema, "print") == 0) return PRINT;
+   if(strcasecmp(lexema, "error") == 0) return ERROR;
+   if(strcasecmp(lexema, "if") == 0) return IF;
+   if(strcasecmp(lexema, "else") == 0) return ELSE;
+   if(strcasecmp(lexema, "while") == 0) return WHILE;
+   if(strcasecmp(lexema, "for") == 0) return FOR;
+   if(strcasecmp(lexema, "in") == 0) return IN;
+   if(strcasecmp(lexema, "ite") == 0) return ITE;
+   if(strcasecmp(lexema, "lambda") == 0) return LAMBDA;
+   if(strcasecmp(lexema, "null") == 0) return NIL;
+   return ID;
+}
+
+int yylex()
+{
     char c ,t;
     
-    while(1){
+    while(1)
+    {
         c=getchar();
     
         if( c == '\n' ) continue;
         if( isspace( c ) ) continue;
         
-        if(isalpha(c)){
+        if(isalpha(c))
+        {
             int i=0;
-            do{
+            do
+            {
                 lexema[i++]=c;
                 c=getchar();
             }while(isalnum(c));
             
             ungetc(c,stdin);
             lexema[i]=0;
-            return ID; 
+            return reservedWord(lexema); 
         }
-        else if(isdigit(c)) {
+        else if(isdigit(c))
+        {
             int i = 0;
-            do{
+            do
+            {
                 lexema[i++] = c;
                 c = getchar();
             }while(isdigit(c));
             
             if(!isalpha(c))
             {
-                if(c == '.'){
-                    do{
+                if(c == '.')
+                {
+                    do
+                    {
                         lexema[i++] = c;
                         c = getchar();
                     }while(isdigit(c));
                     
-                    if( !isalpha(c)){
+                    if( !isalpha(c))
+                    {
                         ungetc(c, stdin);
                         lexema[i] == 0;
                         return FLOAT;
                     }
                 }
-                else{
+                else
+                {
                     ungetc(c, stdin);
                     lexema[i] = 0;
                     return INT;
@@ -114,10 +155,10 @@ int yylex(){
         return c;			
     }
 }
-void main(){
+void main()
+{
     if(!yyparse())
         printf("Sintaxis de lenguaje valida\n");
     else
         printf("Sintaxis de lenguaje invalida\n");
 }
-
