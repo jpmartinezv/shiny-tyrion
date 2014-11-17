@@ -40,6 +40,7 @@ void interpretedCode();
 %token ID INT FLOAT NUM
 %token DEF PRINT ERROR IF ELSE WHILE FOR IN ITE LAMBDA NIL
 %token ASSIGN DECLARE FUNCTION
+%token JUMP JUMPF
 
 %%
 
@@ -52,12 +53,14 @@ statements      :   statement statements
 
 statement       :   expression                                                          {printf("Expression\n");}
                 |   ID {$$ = locateSymbol( lexema, ID );}':''=' expression {genCode( ASSIGN, $2, $5, '-');}
-                |   DEF ID '=' expression                                               {printf("Var. Declaration\n");}
+                |   DEF ID {$$ = locateSymbol( lexema, ID);} '=' expression  {genCode( ASSIGN, $3, $5, '-');}
                 |   DEF ID '(' parameters ')' '{' statements '}'                        {printf("Function Definition\n");}
-                |   PRINT expression                                                    {printf("Print expression to console\n");}
-                |   ERROR expression                                                    {printf("Print expression and exit\n");}
-                |   IF '(' expression ')' '{' statements '}' ELSE '{' statements '}'    {printf("If-else statement\n");}
-                |   WHILE '(' expression ')' '{' statements '}'                         {printf("While loop\n");}
+                |   PRINT expression { genCode( PRINT, $2, '-', '-' ); }
+                |   ERROR expression { genCode( ERROR, $2, '-', '-' ); }
+                |   IF '(' expression {genCode(JUMPF, $3, '?', '-'); $$ = cx;} ')' '{' statements '}' {genCode(JUMP, '?', '-', '-');
+                    $$ = cx;}{ codeTable[$4].a2 = cx + 1;} ELSE '{' statements '}' {codeTable[$9].a1 = cx + 1;}
+                |   WHILE {genCode(WHILE, $0, '-', '-'); $$ = cx;}'(' expression { genCode(JUMPF, $4, '?', '-'); $$ = cx;} ')' 
+                    '{' statements {genCode( JUMP, '?', '-', '-'); $$ = cx;} {codeTable[$9].a1 = $2+1;} {codeTable[$5].a2 = cx + 1;}'}'
                 |   FOR '(' ID IN expr4')' '{' statements '}'                           {printf("For loop\n");}
                 ;
 
@@ -72,28 +75,28 @@ expression      :   expr4
                 ;
 
 expr4           :   expr3
-                |   expr4 '+' expr3 {int i = genVarTemp();}
-                |   expr4 '-' expr3 {int i = genVarTemp();}
+                |   expr4 '+' expr3 {int i = genVarTemp(); genCode( '+', i, $1, $3); $$ = i;}
+                |   expr4 '-' expr3 {int i = genVarTemp(); genCode( '-', i, $1, $3); $$ = i;}
                 ;
 
 expr3           :   expr2
-                |   expr3 '*' expr2 {int i = genVarTemp();}
-                |   expr3 '/' expr2 {int i = genVarTemp();}
+                |   expr3 '*' expr2 {int i = genVarTemp(); genCode( '*', i, $1, $3); $$ = i;}
+                |   expr3 '/' expr2 {int i = genVarTemp(); genCode( '/', i, $1, $3); $$ = i;}
                 ;
 
 expr2           :   expr1
-                |   expr2 '=''=' expr1 {int i = genVarTemp();}
-                |   expr2 '!''=' expr1 {int i = genVarTemp();}
-                |   expr2 '<''=' expr1 {int i = genVarTemp();}
-                |   expr2 '>''=' expr1 {int i = genVarTemp();}
-                |   expr2 '<' expr1 {int i = genVarTemp();}
-                |   expr2 '>' expr1 {int i = genVarTemp();}
+                |   expr2 '=''=' expr1 {int i = genVarTemp(); genCode( '=', i, $1, $4); $$ = i;}
+                |   expr2 '!''=' expr1 {int i = genVarTemp(); genCode( '!', i, $1, $4); $$ = i;}
+                |   expr2 '<''=' expr1 {int i = genVarTemp(); genCode( '<', i, $1, $4); $$ = i;}
+                |   expr2 '>''=' expr1 {int i = genVarTemp(); genCode( '>', i, $1, $4); $$ = i;}
+                |   expr2 '<' expr1 {int i = genVarTemp(); genCode( '<', i, $1, $3); $$ = i;}
+                |   expr2 '>' expr1 {int i = genVarTemp(); genCode( '>', i, $1, $3); $$ = i;}
                 ;
 
 expr1           :   num {$$ = locateSymbol(lexema, NUM);}
                 |   ID  {$$ = locateSymbol(lexema, ID);}
-                |   '(' expr4 ')' {int i = genVarTemp();}
-                |   '?' ID '(' parameters ')' {int i = genVarTemp();}
+                |   '(' expr4 ')' {int i = genVarTemp(); genCode( 'p', i, $2, '-'); $$ = i;}
+                |   '?' ID '(' parameters ')' {int i = genVarTemp(); }
                 ;
 
 num             :   INT
@@ -101,6 +104,69 @@ num             :   INT
                 ;
 
 %%
+
+void interpretedCode()
+{
+   int i, op, a1, a2, a3;
+   int f = 0;
+
+   puts("---------------------------------------------------------------------");
+   for( i = 0; i <= cx; i++ )
+   {
+      op = codeTable[i].op;
+      a1 = codeTable[i].a1;
+      a2 = codeTable[i].a2;
+      a3 = codeTable[i].a3;
+      switch(op)
+      {
+         case ASSIGN:
+            SymTable[a1].value = SymTable[a2].value;
+         case '+':
+            SymTable[a1].value = SymTable[a2].value + SymTable[a3].value;
+            break;
+         case '-':
+            SymTable[a1].value = SymTable[a2].value - SymTable[a3].value;
+            break;
+         case '*':
+            SymTable[a1].value = SymTable[a2].value * SymTable[a3].value;
+            break;
+         case '/':
+            SymTable[a1].value = SymTable[a2].value / SymTable[a3].value;
+            break;
+         case '=':
+            SymTable[a1].value = (SymTable[a2].value == SymTable[a3].value);
+            break;
+         case '!':
+            SymTable[a1].value = (SymTable[a2].value != SymTable[a3].value);
+            break;
+         case '<':
+            SymTable[a1].value = (SymTable[a2].value < SymTable[a3].value);
+            break;
+         case '>':
+            SymTable[a1].value = (SymTable[a2].value > SymTable[a3].value);
+            break;
+         case 'p':
+            SymTable[a1].value = SymTable[a2].value;
+            break;
+         case JUMPF:
+            if( SymTable[a1].value == 0 )
+               i = a2 - 1;
+            break;
+         case JUMP:
+            i = a1 - 1;
+            break;
+         case PRINT:
+            printf("%lf\n", SymTable[a1].value);
+            break;
+         case ERROR:
+            printf("Error: %lf\n", SymTable[a1].value);
+            f = SymTable[a1].value;
+            break;
+      }
+      if(f) break;
+   }
+   puts("---------------------------------------------------------------------");
+}
 
 int genVarTemp()
 {
@@ -252,4 +318,10 @@ void main()
    puts("");
    puts("TABLA DE CODIGOS");
    printCodeTable();
+
+   interpretedCode();
+   
+   puts("");
+   puts("TABLA DE SIMBOLOS");
+   printSymTable();
 }
