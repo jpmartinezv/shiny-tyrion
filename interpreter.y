@@ -51,7 +51,7 @@ statements      :   statement statements
                 |   statement
                 ;
 
-statement       :   expression                                                          {printf("Expression\n");}
+statement       :   expression
                 |   ID {$$ = locateSymbol( lexema, ID );}':''=' expression {genCode( ASSIGN, $2, $5, '-');}
                 |   DEF ID {$$ = locateSymbol( lexema, ID);} '=' expression  {genCode( ASSIGN, $3, $5, '-');}
                 |   DEF ID '(' parameters ')' '{' statements '}'                        {printf("Function Definition\n");}
@@ -61,7 +61,7 @@ statement       :   expression                                                  
                     $$ = cx;}{ codeTable[$4].a2 = cx + 1;} ELSE '{' statements '}' {codeTable[$9].a1 = cx + 1;}
                 |   WHILE {genCode(WHILE, $0, '-', '-'); $$ = cx;}'(' expression { genCode(JUMPF, $4, '?', '-'); $$ = cx;} ')' 
                     '{' statements {genCode( JUMP, '?', '-', '-'); $$ = cx;} {codeTable[$9].a1 = $2+1;} {codeTable[$5].a2 = cx + 1;}'}'
-                |   FOR '(' ID IN expr4')' '{' statements '}'                           {printf("For loop\n");}
+                |   FOR '(' expr4 ',' expr4 ',' expr4 ')' '{' statements '}'                           {printf("For loop\n");}
                 ;
 
 parameters      :   expression ',' parameters

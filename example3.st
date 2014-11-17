@@ -3,4 +3,4 @@ if (1) {
 } else {
 	print 2
 }
-?f(3)
+print 3
